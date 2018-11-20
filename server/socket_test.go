@@ -1,8 +1,11 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -55,13 +58,13 @@ func TestSocketClient(t *testing.T) {
 
 	defer conn.Close()
 
-	//inputReader := bufio.NewReader(os.Stdin)
+	inputReader := bufio.NewReader(os.Stdin)
 
 	for {
-		//str, _ := inputReader.ReadString('\n')
-		//data := strings.Trim(str, "\n")
+		str, _ := inputReader.ReadString('\n')
+		data := strings.Trim(str, "\n")
 
-		data := "jinyidong"
+		//data := "jinyidong"
 
 		if data == "quit" { //输入quit退出
 			return
