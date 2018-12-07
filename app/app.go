@@ -1,14 +1,8 @@
 package app
 
-import "go-core/app/server"
-
-//查询实现了ServeHTTP接口的类
-func init() {
-
-}
+import "github.com/jinyidong/go-core/app/server"
 
 func UseWebServer(config server.Config, handler server.Handler) server.Server {
-
 	s := &server.WebServer{}
 
 	s.Config = config

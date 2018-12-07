@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/json-iterator/go"
+	"github.com/satori/go.uuid"
 )
 
 func StructToJson(model interface{}) string {
@@ -21,4 +22,8 @@ func ByteToStruct(data []byte, object interface{}) error {
 	err := json.Unmarshal(data, object)
 
 	return err
+}
+
+func GetGuid() string {
+	return uuid.NewV4().String()
 }

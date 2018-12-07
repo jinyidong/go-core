@@ -11,7 +11,7 @@ import (
 var Paths = "config,connection"
 
 type Manager struct {
-	node *Node
+	configMap map[string]string
 }
 
 var manager *Manager
@@ -22,14 +22,15 @@ func NewManager() *Manager {
 
 	once.Do(func() {
 		manager = &Manager{}
+		manager.configMap = make(map[string]string)
 
 		zoo = newZK(strings.Split(BasicConfig.Zookeeper, ","), func(event zk.Event) {
 			switch event.State {
 			case zk.StateExpired:
 				{
 					fmt.Println("StateExpired")
-					manager.setNodes("/")
-					fmt.Println("setNodes /")
+					setAll()
+					fmt.Println("setAll /")
 				}
 			}
 			switch event.Type {
@@ -46,9 +47,8 @@ func NewManager() *Manager {
 				}
 			case zk.EventNodeChildrenChanged:
 				{
-					newPath := event.Path
-					manager.setNodes(newPath)
-					fmt.Printf("EventNodeChildrenChanged: %s\n", newPath)
+					initMap(event.Path)
+					fmt.Printf("EventNodeChildrenChanged: %s\n", event.Path)
 				}
 			case zk.EventNodeCreated:
 				{
@@ -56,227 +56,106 @@ func NewManager() *Manager {
 				}
 			}
 		})
-
-		manager.node = initNodes()
+		setAll()
 	})
 
 	return manager
 }
 
-func initNodes() *Node {
+func (m *Manager) Get(configPath string) string {
+	if strings.HasPrefix(configPath, "/connection") || strings.HasPrefix(configPath, "/config") {
+		v := m.configMap[configPath]
+		if v == "" {
+			v, _, err := zoo.GetW(configPath)
 
-	var node = newNode()
-
-	nextNode(node, "/")
-
-	if node.Children == nil {
-		panic("no child")
+			if err == nil {
+				m.configMap[configPath] = v
+				return v
+			}
+			return ""
+		}
 	}
-
-	return node
+	return m.configMap[configPath]
 }
 
-func nextNode(node *Node, path string) {
-	if node == nil {
+func initMap(path string) {
+	if path == "" {
 		return
 	}
-	var zookeeper = zoo
-
-	children, _, err := zookeeper.GetChildrenW(path)
+	if strings.EqualFold(path, "/") && !(strings.Index(Paths, path) >= 0) {
+		return
+	}
+	var zk = zoo
+	children, _, err := zk.GetChildrenW(path)
 
 	if err != nil {
 		panic(err)
 	}
-
 	if children == nil || len(children) <= 0 {
 		return
 	}
-
 	for _, sPath := range children {
 		var nextPath = path
 
 		if strings.EqualFold(path, "/") && !(strings.Index(Paths, sPath) >= 0) {
 			continue
 		}
-
 		if !strings.HasSuffix(nextPath, "/") {
 			nextPath += "/"
 		}
 		nextPath += sPath
-
-		v, _, _ := zookeeper.GetW(nextPath)
-
-		var child = &Node{
-			Path:  sPath,
-			Value: v,
-		}
-
-		node.appendChild(child)
-
-		nextNode(child, nextPath)
+		v, _, _ := zk.GetW(nextPath)
+		manager.configMap[nextPath] = v
 	}
-}
-
-func (m *Manager) GetChildren(path string) []*Node {
-
-	node, _ := getNode(m.node, path)
-
-	if node == nil {
-		return nil
-	}
-
-	return node.Children
-}
-
-func (m *Manager) Get(path string) string {
-
-	node, _ := getNode(m.node, path)
-
-	if node == nil {
-		return ""
-	}
-	return node.Value
 }
 
 func (m *Manager) Create(name string, v interface{}) error {
-	var zookeeper = zoo
-
+	var zk = zoo
 	data, err := json.Marshal(v)
-
 	if err != nil {
 		return err
 	}
-
-	err = zookeeper.Create(name, data, -1)
-
+	err = zk.Create(name, data, -1)
 	return err
 }
 
 func (m *Manager) Set(path string, v interface{}) error {
-	var zookeeper = zoo
-
+	var zk = zoo
 	data, err := json.Marshal(v)
-
 	if err != nil {
 		return err
 	}
-
-	err = zookeeper.Set(path, data, -1)
-
+	err = zk.Set(path, data, -1)
 	return err
 }
 
-func (m *Manager) add(path string, v string) {
-
-	node, paths := getNode(m.node, path)
-
-	newNode := &Node{Path: paths[len(paths)-1], Value: v}
-
-	node.appendChild(newNode)
-}
-
 func (m *Manager) update(path string) {
-	node, _ := getNode(m.node, path)
-
-	v, _, _ := zoo.GetW(path)
-
-	node.Value = v
+	if path == "" {
+		return
+	}
+	if strings.EqualFold(path, "/") && !(strings.Index(Paths, path) >= 0) {
+		return
+	}
+	var zk = zoo
+	v, _, err := zk.GetW(path)
+	if err != nil {
+		panic(err)
+	}
+	manager.configMap[path] = v
 }
 
 func (m *Manager) delete(path string) {
-
-	node, _ := getNode(m.node, path)
-
-	if node == nil {
-		return
-	}
-
-	paths := strings.Split(path, "/")
-
-	newPaths := paths[1 : len(paths)-1]
-
-	if newPaths == nil {
-		return
-	}
-
-	newPath := "/" + strings.Join(newPaths, "/")
-
-	pNode, _ := getNode(m.node, newPath)
-
-	if pNode == nil {
-		return
-	}
-
-	removeIndex := 0
-
-	for i := 0; i < len(pNode.Children); i++ {
-		if node == pNode.Children[i] {
-			removeIndex = i
-			break
-		}
-	}
-
-	pNode.Children = append(pNode.Children[:removeIndex], pNode.Children[removeIndex+1:]...)
-}
-
-func (m *Manager) setNodes(path string) {
-	node, _ := getNode(m.node, path)
-
-	nextNode(node, path)
-}
-
-func getNode(node *Node, path string) (*Node, []string) {
-	if node == nil {
-		panic("node is nil")
-	}
-
 	if path == "" {
-		panic("path is empty")
+		return
 	}
-
-	paths := strings.Split(path, "/")
-
-	if len(paths) <= 1 {
-		panic("path len <=1")
-	}
-
-	var returnNode = node
-
-	for i := 1; i < len(paths); i++ {
-		returnNode = childSelector(returnNode, paths[i])
-
-		if returnNode == nil {
-			break
-		}
-	}
-
-	return returnNode, paths
+	delete(m.configMap, path)
 }
 
-func childSelector(n *Node, p string) *Node {
-
-	if p == "" {
-		return nil
+func setAll() {
+	paths := strings.Split(Paths, ",")
+	for _, v := range paths {
+		initMap("/" + v)
 	}
-
-	var childNode *Node
-	for i, child := range n.Children {
-
-		if child == nil {
-			continue
-		}
-
-		if child.Path == "" {
-			continue
-		}
-
-		if p == child.Path {
-			childNode = n.Children[i]
-			break
-		}
-	}
-
-	return childNode
 }
 
 func (m *Manager) Dispose() {
