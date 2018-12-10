@@ -17,6 +17,8 @@ func TestStructToJson(t *testing.T) {
 		time.Date(2019,10,23,0,0,0,0,time.Local),
 	}
 
+	//test
+
 	userAddr:=&user
 
 	userJson:=StructToJson(userAddr)
