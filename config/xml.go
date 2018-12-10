@@ -15,7 +15,7 @@ type XmlConfig struct {
 var BasicConfig = &XmlConfig{}
 
 func init() {
-	file, err := os.Open("/config/suiyi.config")
+	file, err := os.Open("/config/demo.config")
 	if err != nil {
 		log.Printf("error: %v", err)
 	}
