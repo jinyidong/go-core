@@ -25,5 +25,9 @@ func ByteToStruct(data []byte, object interface{}) error {
 }
 
 func GetGuid() string {
-	return uuid.NewV4().String()
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		return ""
+	}
+	return uuid.String()
 }

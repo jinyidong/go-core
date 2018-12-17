@@ -15,7 +15,8 @@ type XmlConfig struct {
 var BasicConfig = &XmlConfig{}
 
 func init() {
-	file, err := os.Open("/config/demo.config")
+	configPath := "/config/zk.config" //注意在windows下，磁盘目录为GOPATH所对应的目录
+	file, err := os.Open(configPath)
 	if err != nil {
 		log.Printf("error: %v", err)
 	}

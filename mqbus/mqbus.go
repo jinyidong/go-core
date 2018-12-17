@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jinyidong/go-core/config"
+	"github.com/jinyidong/go-core/util/pool"
 	"github.com/streadway/amqp"
 	"strings"
-	"sygit.suiyi.com.cn/go/core/util/pool"
 	"sync"
 	"time"
 )
@@ -48,7 +48,7 @@ func (mqbus *mqBus) get(connectionString string) (pool.Pool, error) {
 
 		once.(*sync.Once).Do(func() {
 			zkManager := config.NewManager()
-			uri := zkManager.Get(connectionString)//"host=10.1.4.131:5672;username=guest;password=guest"
+			uri := zkManager.Get(connectionString) //"host=10.1.4.131:5672;username=guest;password=guest"
 			fmt.Println(uri)
 			var connectionPool pool.Pool
 			var connection *amqp.Connection
@@ -87,7 +87,7 @@ func (mqbus *mqBus) get(connectionString string) (pool.Pool, error) {
 										v.Conn = connection
 										receiver = make(chan *amqp.Error)
 										v.Conn.NotifyClose(receiver)
-										fmt.Println("重连成功",&v)
+										fmt.Println("重连成功", &v)
 										break Loop
 									} else {
 										fmt.Println("重连失败,5s后重试", err)
@@ -170,7 +170,7 @@ func (mqbus *mqBus) Post(message Message) error {
 
 	defer pooledObj.Dispose()
 
-	if err!= nil{
+	if err != nil {
 		return fmt.Errorf("connectionPool.Get: %s", err)
 	}
 
@@ -183,7 +183,7 @@ func (mqbus *mqBus) Post(message Message) error {
 	channel, err := connection.Channel()
 
 	if err != nil {
-		return fmt.Errorf("Channel: %s", err,&conn)
+		return fmt.Errorf("Channel: %s", err, &conn)
 	}
 
 	defer channel.Close()
