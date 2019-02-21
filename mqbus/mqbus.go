@@ -127,6 +127,26 @@ func (mqbus *mqBus) get(connectionString string) (pool.Pool, error) {
 	}
 }
 
+func subIndexStr(str string,indexStr string) string{
+
+	if str == "" || indexStr == "" {
+		return ""
+	}
+	rs := []rune(str)
+
+	result := string(rs[len(indexStr):len(str)])
+
+	return result
+}
+
+const (
+	Host = "host="
+	UserName = "username="
+	PassWord = "password="
+	VirtualHost = "virtualHost="
+)
+
+
 func parse2Amqp(amqpConnectionString string) string {
 
 	if amqpConnectionString == "" {
@@ -140,18 +160,17 @@ func parse2Amqp(amqpConnectionString string) string {
 	var password string
 	var vHost string
 	for _, v := range kv {
-		vv := strings.Split(v, "=")
-		if strings.Contains(v, "host=") {
-			host = vv[1]
+		if strings.Contains(v, Host) {
+			host = subIndexStr(v,Host)
 		}
-		if strings.Contains(v, "username=") {
-			username = vv[1]
+		if strings.Contains(v, UserName) {
+			username = subIndexStr(v,UserName)
 		}
-		if strings.Contains(v, "password=") {
-			password = vv[1]
+		if strings.Contains(v, PassWord) {
+			password = subIndexStr(v,PassWord)
 		}
-		if strings.Contains(v, "virtualHost=") {
-			vHost = vv[1]
+		if strings.Contains(v, VirtualHost) {
+			vHost = subIndexStr(v,VirtualHost)
 		}
 	}
 
